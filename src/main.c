@@ -21,6 +21,7 @@ void *read_binary(char *path, size_t *length) {
         close(fd);
         return NULL;
     }
+    *length = statbuf.st_size;
 
     void *addr = mmap(NULL, *length, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
@@ -43,7 +44,7 @@ int main(int argc, char **argv) {
     }
     
     elf_prop_t prop;
-    parse_header(addr, &prop);
+    parse(addr, &prop);
 
     munmap(addr, len);
     return 0;

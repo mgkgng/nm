@@ -1,10 +1,12 @@
 #pragma once
 
 #include <stdint.h>
+#include <elf.h>
+#include <stdio.h>
 
 typedef struct {
-    int is_32bit;
-    int is_little_endian;
+    unsigned char arch;
+    unsigned char encoding;
 } elf_prop_t;
 
-void parse_header(const uint8_t *data, elf_prop_t *prop);
+void parse(const uint8_t *data, elf_prop_t *prop);
