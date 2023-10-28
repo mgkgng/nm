@@ -12,5 +12,6 @@
 #define OPT_P 1 << 4
 
 extern uint8_t g_opts;
+extern uint8_t g_file_nb;
 
 t_list *parse(int ac, char **av);

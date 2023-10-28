@@ -18,3 +18,4 @@ t_list *ft_lstnew(void *content);
 void ft_lstadd_back(t_list **alst, t_list *new_list);
 int ft_lstsize(t_list *lst);
 void ft_lstsort(t_list **alst, int OPTs, int (*cmp)(void *, void *, int));
+void ft_lstclear(t_list **lst, void (*del)(void *));

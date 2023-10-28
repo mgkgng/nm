@@ -19,3 +19,5 @@ typedef struct {
 } elf_prop_t;
 
 int run_nm(const char* path);
+void display_symbol_table_32(void *data, elf_prop_t *prop);
+void display_symbol_table_64(void *data, elf_prop_t *prop);

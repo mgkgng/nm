@@ -45,3 +45,13 @@ int ft_lstsize(t_list *lst) {
 	}
 	return (res);
 }
+
+void ft_lstclear(t_list **lst, void (*del)(void *)) {
+    t_list *tmp = NULL;
+    while (*lst) {
+        tmp = (*lst)->next;
+        del((*lst)->content);
+        free(*lst);
+        *lst = tmp;
+    }
+}

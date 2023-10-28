@@ -1,5 +1,7 @@
 #include "libft.h"
 
+#include <stdio.h>
+
 static int ft_putchar(char c) {
     write(1, &c, 1);
     return 1;
@@ -8,7 +10,7 @@ static int ft_putchar(char c) {
 static int ft_putstr(char *s) {
     int len = 0;
     while (s[len])
-		write(1, &s[len++], 1);
+		ft_putchar(s[len++]);
     return len;
 }
 
@@ -76,7 +78,7 @@ static int ft_putptr(unsigned long long n, int on) {
 static int print(const char *s, int *i, va_list arg_n) {
 	if (!s[*i])
 		return (0);
-	char type = s[(*i)++];
+	char type = s[(*i)];
 	if (type == 'd' || type == 'i')
 		return (ft_putnbr(va_arg(arg_n, int)));
 	else if (type == 'u')

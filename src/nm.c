@@ -1,15 +1,22 @@
 #include "nm.h"
+#include "parse.h"
 
 void *read_binary(const char *path, size_t *length) {
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
-        ft_putstr_fd("error: open\n", STDERR_FILENO);
+        ft_printf("ft_nm: Error opening file '%s'\n", path);
         return NULL;
     }
 
     struct stat statbuf;
     if (fstat(fd, &statbuf) < 0) {
-        ft_putstr_fd("error: fstat\n", STDERR_FILENO);
+        
+        close(fd);
+        return NULL;
+    }
+
+    if (S_ISDIR(statbuf.st_mode)) {
+        ft_printf("ft_nm: Warning: '%s' is a directory\n", path);
         close(fd);
         return NULL;
     }
@@ -43,79 +50,85 @@ void *read_binary(const char *path, size_t *length) {
 //     uint16_t      e_shstrndx;            /* Section header string table index */
 // } ElfN_Ehdr;
 
-static void *process_elf_header32(const uint8_t *data, elf_prop_t *prop) {
+static int retrieve_section_header_data_32(const uint8_t *data, elf_prop_t *prop, const char *path) {
     Elf32_Ehdr *ehdr = (Elf32_Ehdr *) data;
     prop->section_header = (void *) data + ehdr->e_shoff;
     prop->section_entry_nb = ehdr->e_shnum;
     prop->section_entry_size = ehdr->e_shentsize;
     if (ehdr->e_shstrndx == SHN_UNDEF) {
-        ft_printf("no section header string table\n");
-        return NULL;
+        ft_printf("ft_nm: %s: no section header string table\n");
+        return -1;
     }
     prop->string_table_index = ehdr->e_shstrndx;
+    return 0;
 }
 
-static void *process_elf_header64(const uint8_t *data, elf_prop_t *prop) {
+static int retrieve_section_header_data_64(const uint8_t *data, elf_prop_t *prop, const char *path) {
     Elf64_Ehdr *ehdr = (Elf64_Ehdr *) data;
     prop->section_header = (void *) data + ehdr->e_shoff;
     prop->section_entry_nb = ehdr->e_shnum; // TODO check if section size in section header is 0
     prop->section_entry_size = ehdr->e_shentsize;
     if (ehdr->e_shstrndx == SHN_UNDEF) {
-        ft_printf("no section header string table\n");
-        return NULL;
+        ft_printf("ft_nm: %s: no section header string table\n");
+        return -1;
     }
     prop->string_table_index = ehdr->e_shstrndx;
+    return 0;
 }
 
-void *hopla(const uint8_t *data, elf_prop_t *prop) {
+static int process_elf_header(const uint8_t *data, elf_prop_t *prop, const char *path) {
     // Check if magic code is correct (ELF format)
     // Magic code: 0x7f, 'E', 'L', 'F'
     if (!(data[0] == 0x7f && data[1] == 'E' && data[2] == 'L' && data[3] == 'F')) {
-        ft_printf("magic code wrong\n");
-        return NULL;
+        ft_printf("ft_nm: %s: file format not recognized\n", path);
+        return -1;
     }
 
+    // Check if the architecture is supported
     if (data[4] == ELFCLASSNONE) {
-        ft_printf("invalid class\n");
-        return NULL;
+        ft_printf("ft_nm: %s: invalid architecture\n", path);
+        return -1;
     }
 
     // save arch and encoding information which will be essential for further parsing
     prop->arch = data[4];
     prop->encoding = data[5];
 
-    void *res = (data[4] == ELFCLASS32) ? process_elf_header32(data, prop) : process_elf_header64(data, prop);
-    if (!res) {
-        ft_printf("error processing ELF header\n");
-        return NULL;
-    }
+    // Retrieve information about the section header
+    return (data[4] == ELFCLASS32) 
+        ? retrieve_section_header_data_32(data, prop, path) 
+        : retrieve_section_header_data_64(data, prop, path);
 }
 
+
 int run_nm(const char* path) {
+    // Read the binary file
     size_t len;
     void *addr = read_binary(path, &len);
     if (!addr)
         return 1;
     
+    // Process ELF header and retrieve information about the binary
     elf_prop_t prop;
-    void *res = hopla(addr, &prop);
-    if (!res) {
+    int res = process_elf_header(addr, &prop, path);
+    if (res < 0) {
         munmap(addr, len);
         return 1;
     }
 
+    // Display the name of the file
+    if (g_file_nb > 1)
+        ft_printf("%s:\n", path);
+
     if (prop.arch == ELFCLASS32) {
         ft_printf("32-bit ELF file\n");
     } else if (prop.arch == ELFCLASS64) {
-        ft_printf("64-bit ELF file\n");
+
     } else {
         ft_printf("invalid class\n");
         return 1;
     }
 
-    // display64(addr, &prop);
-
     munmap(addr, len);
     return 0;
-
 }
