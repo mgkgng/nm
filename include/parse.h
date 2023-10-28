@@ -1,18 +1,16 @@
 #pragma once
 
 #include <stdint.h>
-#include <elf.h>
-#include <stdio.h>
 
+#include "nm.h"
+#include "libft.h"
 
-typedef struct {
-    uint8_t arch;
-    uint8_t encoding;
-    void *section_header;
-    uint16_t section_entry_nb;
-    uint16_t section_entry_size;
-    uint16_t string_table_index;
-    
-} elf_prop_t;
+#define OPT_A 1 << 0
+#define OPT_G 1 << 1
+#define OPT_U 1 << 2
+#define OPT_R 1 << 3
+#define OPT_P 1 << 4
 
-void *parse(const uint8_t *data, elf_prop_t *prop);
+extern uint8_t g_opts;
+
+t_list *parse(int ac, char **av);
