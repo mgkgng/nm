@@ -1,59 +1,66 @@
-
-
 #include "parse.h"
 
-static int check_magic_code(const uint8_t *data) {
-    return (data[0] == 0x7f && data[1] == 'E' && data[2] == 'L' && data[3] == 'F');
+// typedef struct {
+//     unsigned char e_ident[EI_NIDENT];    /* Magic number and other info */
+//     uint16_t      e_type;                /* Object file type */
+//     uint16_t      e_machine;             /* Architecture */
+//     uint32_t      e_version;             /* Object file version */
+//     ElfN_Addr     e_entry;               /* Entry point virtual address */
+//     ElfN_Off      e_phoff;               /* Program header table file offset */
+//     ElfN_Off      e_shoff;               /* Section header table file offset */
+//     uint32_t      e_flags;               /* Processor-specific flags */
+//     uint16_t      e_ehsize;              /* ELF header size in bytes */
+//     uint16_t      e_phentsize;           /* Program header table entry size */
+//     uint16_t      e_phnum;               /* Program header table entry count */
+//     uint16_t      e_shentsize;           /* Section header table entry size */
+//     uint16_t      e_shnum;               /* Section header table entry count */
+//     uint16_t      e_shstrndx;            /* Section header string table index */
+// } ElfN_Ehdr;
+
+static void *process_elf_header32(const uint8_t *data, elf_prop_t *prop) {
+    Elf32_Ehdr *ehdr = (Elf32_Ehdr *) data;
+    prop->section_header = (void *) data + ehdr->e_shoff;
+    prop->section_entry_nb = ehdr->e_shnum;
+    prop->section_entry_size = ehdr->e_shentsize;
+    if (ehdr->e_shstrndx == SHN_UNDEF) {
+        printf("no section header string table\n");
+        return NULL;
+    }
+    prop->string_table_index = ehdr->e_shstrndx;
 }
 
-void *parse_elf_header(const uint8_t *data, elf_prop_t *prop) {
+static void *process_elf_header64(const uint8_t *data, elf_prop_t *prop) {
+    Elf64_Ehdr *ehdr = (Elf64_Ehdr *) data;
+    prop->section_header = (void *) data + ehdr->e_shoff;
+    prop->section_entry_nb = ehdr->e_shnum; // TODO check if section size in section header is 0
+    prop->section_entry_size = ehdr->e_shentsize;
+    if (ehdr->e_shstrndx == SHN_UNDEF) {
+        printf("no section header string table\n");
+        return NULL;
+    }
+    prop->string_table_index = ehdr->e_shstrndx;
+}
+
+void *parse(const uint8_t *data, elf_prop_t *prop) {
     // Check if magic code is correct (ELF format)
-    if (!check_magic_code(data)) {
+    // Magic code: 0x7f, 'E', 'L', 'F'
+    if (!(data[0] == EI_MAG0 && data[1] == EI_MAG1 && data[2] == EI_MAG2 && data[3] == EI_MAG3)) {
         printf("magic code wrong\n");
         return;
     }
 
-    // save arch and encoding information
+    if (data[4] == ELFCLASSNONE) {
+        printf("invalid class\n");
+        return NULL;
+    }
+
+    // save arch and encoding information which will be essential for further parsing
     prop->arch = data[4];
     prop->encoding = data[5];
 
-    // If unknown data format
-    if (prop->encoding == ELFDATANONE) {
-        printf("invalid data encoding\n");
+    void *res = (data[4] == ELFCLASS32) ? process_elf_header32(data, prop) : process_elf_header64(data, prop);
+    if (!res) {
+        printf("error processing ELF header\n");
         return NULL;
     }
-
-    // 32 or 64 bit architecture, then parse the header,
-    // then return the pointer to the program header
-    // if not invalid class
-    if (prop->arch == ELFCLASS32) {
-        Elf32_Ehdr *ehdr = (Elf32_Ehdr *) data;
-        return data + ehdr->e_phoff;
-    } else if (prop->arch == ELFCLASS64) {
-        Elf64_Ehdr *ehdr = (Elf64_Ehdr *) data;
-        return data + ehdr->e_phoff;
-    } else {
-        printf("arch wrong\n");
-        return NULL;
-    }
-}
-
-void parse_program_header32(void *addr) {
-    Elf32_Phdr *phdr = (Elf32_Phdr *) addr;
-    printf("test32 %d\n", phdr->p_type);
-}
-
-void parse_program_header64(void *addr) {
-    Elf64_Phdr *phdr = (Elf64_Phdr *) addr;
-    printf("test64 %d\n", phdr->p_type);
-}
-
-void parse(const uint8_t *data, elf_prop_t *prop) {
-    void *phdr_addr = parse_elf_header(data, prop);
-    if (!phdr_addr)
-        return;
-    if (prop->arch == ELFCLASS32)
-        parse_program_header32(phdr_addr);
-    else
-        parse_program_header64(phdr_addr);
 }
