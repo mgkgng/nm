@@ -1,7 +1,24 @@
 #include "nm.h"
 #include "parse.h"
 
-void *read_binary(const char *path, size_t *length) {
+// typedef struct {
+//     unsigned char e_ident[EI_NIDENT];    /* Magic number and other info */
+//     uint16_t      e_type;                /* Object file type */
+//     uint16_t      e_machine;             /* Architecture */
+//     uint32_t      e_version;             /* Object file version */
+//     ElfN_Addr     e_entry;               /* Entry point virtual address */
+//     ElfN_Off      e_phoff;               /* Program header table file offset */
+//     ElfN_Off      e_shoff;               /* Section header table file offset */
+//     uint32_t      e_flags;               /* Processor-specific flags */
+//     uint16_t      e_ehsize;              /* ELF header size in bytes */
+//     uint16_t      e_phentsize;           /* Program header table entry size */
+//     uint16_t      e_phnum;               /* Program header table entry count */
+//     uint16_t      e_shentsize;           /* Section header table entry size */
+//     uint16_t      e_shnum;               /* Section header table entry count */
+//     uint16_t      e_shstrndx;            /* Section header string table index */
+// } ElfN_Ehdr;
+
+static void *read_binary(const char *path, size_t *length) {
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
         ft_printf("ft_nm: Error opening file '%s'\n", path);
@@ -33,28 +50,10 @@ void *read_binary(const char *path, size_t *length) {
     return addr;
 }
 
-// typedef struct {
-//     unsigned char e_ident[EI_NIDENT];    /* Magic number and other info */
-//     uint16_t      e_type;                /* Object file type */
-//     uint16_t      e_machine;             /* Architecture */
-//     uint32_t      e_version;             /* Object file version */
-//     ElfN_Addr     e_entry;               /* Entry point virtual address */
-//     ElfN_Off      e_phoff;               /* Program header table file offset */
-//     ElfN_Off      e_shoff;               /* Section header table file offset */
-//     uint32_t      e_flags;               /* Processor-specific flags */
-//     uint16_t      e_ehsize;              /* ELF header size in bytes */
-//     uint16_t      e_phentsize;           /* Program header table entry size */
-//     uint16_t      e_phnum;               /* Program header table entry count */
-//     uint16_t      e_shentsize;           /* Section header table entry size */
-//     uint16_t      e_shnum;               /* Section header table entry count */
-//     uint16_t      e_shstrndx;            /* Section header string table index */
-// } ElfN_Ehdr;
-
 static int retrieve_section_header_data_32(const uint8_t *data, elf_prop_t *prop, const char *path) {
     Elf32_Ehdr *ehdr = (Elf32_Ehdr *) data;
     prop->section_header = (void *) data + ehdr->e_shoff;
     prop->section_entry_nb = ehdr->e_shnum;
-    prop->section_entry_size = ehdr->e_shentsize;
     if (ehdr->e_shstrndx == SHN_UNDEF) {
         ft_printf("ft_nm: %s: no section header string table\n");
         return -1;
@@ -67,7 +66,6 @@ static int retrieve_section_header_data_64(const uint8_t *data, elf_prop_t *prop
     Elf64_Ehdr *ehdr = (Elf64_Ehdr *) data;
     prop->section_header = (void *) data + ehdr->e_shoff;
     prop->section_entry_nb = ehdr->e_shnum; // TODO check if section size in section header is 0
-    prop->section_entry_size = ehdr->e_shentsize;
     if (ehdr->e_shstrndx == SHN_UNDEF) {
         ft_printf("ft_nm: %s: no section header string table\n");
         return -1;
@@ -120,15 +118,16 @@ int run_nm(const char* path) {
     if (g_file_nb > 1)
         ft_printf("%s:\n", path);
 
-    if (prop.arch == ELFCLASS32) {
-        ft_printf("32-bit ELF file\n");
-    } else if (prop.arch == ELFCLASS64) {
+    // Extract symbol data in linked list
+    t_list *symbol_data = (prop.arch == ELFCLASS32)
+        ? extract_symbol_data_32(addr, prop.section_header, prop.string_table_index, prop.section_entry_nb)
+        : extract_symbol_data_64(addr, prop.section_header, prop.string_table_index, prop.section_entry_nb);
 
-    } else {
-        ft_printf("invalid class\n");
-        return 1;
-    }
+    // Display the symbol data considering the options
+    display_symbol_data(symbol_data);
 
+    // Free & unmap
+    ft_lstclear(&symbol_data, free);
     munmap(addr, len);
     return 0;
 }
