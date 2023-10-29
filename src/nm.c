@@ -1,5 +1,6 @@
 #include "nm.h"
 #include "parse.h"
+#include "display.h"
 
 // typedef struct {
 //     unsigned char e_ident[EI_NIDENT];    /* Magic number and other info */
@@ -52,25 +53,27 @@ static void *read_binary(const char *path, size_t *length) {
 
 static int retrieve_section_header_data_32(const uint8_t *data, elf_prop_t *prop, const char *path) {
     Elf32_Ehdr *ehdr = (Elf32_Ehdr *) data;
-    prop->section_header = (void *) data + ehdr->e_shoff;
-    prop->section_entry_nb = ehdr->e_shnum;
     if (ehdr->e_shstrndx == SHN_UNDEF) {
-        ft_printf("ft_nm: %s: no section header string table\n");
+        ft_printf("ft_nm: %s: no section header string table\n", path);
         return -1;
     }
     prop->string_table_index = ehdr->e_shstrndx;
+    prop->section_header = (void *) data + ehdr->e_shoff;
+    prop->section_entry_nb = ehdr->e_shnum;
+    prop->section_entry_size = ehdr->e_shentsize;
     return 0;
 }
 
 static int retrieve_section_header_data_64(const uint8_t *data, elf_prop_t *prop, const char *path) {
     Elf64_Ehdr *ehdr = (Elf64_Ehdr *) data;
-    prop->section_header = (void *) data + ehdr->e_shoff;
-    prop->section_entry_nb = ehdr->e_shnum; // TODO check if section size in section header is 0
     if (ehdr->e_shstrndx == SHN_UNDEF) {
-        ft_printf("ft_nm: %s: no section header string table\n");
+        ft_printf("ft_nm: %s: no section header string table\n", path);
         return -1;
     }
     prop->string_table_index = ehdr->e_shstrndx;
+    prop->section_header = (void *) data + ehdr->e_shoff;
+    prop->section_entry_nb = ehdr->e_shnum;
+    prop->section_entry_size = ehdr->e_shentsize;
     return 0;
 }
 
@@ -119,15 +122,13 @@ int run_nm(const char* path) {
         ft_printf("%s:\n", path);
 
     // Extract symbol data in linked list
-    t_list *symbol_data = (prop.arch == ELFCLASS32)
-        ? extract_symbol_data_32(addr, prop.section_header, prop.string_table_index, prop.section_entry_nb)
-        : extract_symbol_data_64(addr, prop.section_header, prop.string_table_index, prop.section_entry_nb);
+    t_list *symbol_data = (prop.arch == ELFCLASS32) ? extract_symbol_data_32(addr, &prop) : extract_symbol_data_64(addr, &prop);
 
     // Display the symbol data considering the options
     display_symbol_data(symbol_data);
 
     // Free & unmap
-    ft_lstclear(&symbol_data, free);
+    //ft_lstclear(&symbol_data, free);
     munmap(addr, len);
     return 0;
 }

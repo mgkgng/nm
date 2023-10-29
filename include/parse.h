@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "nm.h"
+#include "elf_prop.h"
 #include "libft.h"
 
 #define OPT_A 1 << 0

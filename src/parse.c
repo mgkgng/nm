@@ -21,7 +21,7 @@ static uint8_t get_opt(char *s) {
             ft_putstr_fd("nm: invalid option -- '", STDERR_FILENO);
             ft_putchar_fd(s[i], STDERR_FILENO);
             ft_putstr_fd("'\n", STDERR_FILENO);
-            return -1;
+            return 1 << 7;
         }
     }
     return res;
@@ -32,7 +32,7 @@ t_list *parse(int ac, char **av) {
     for (int i= 1; i < ac; i++) {
         if (av[i][0] == '-' && av[i][1] != '\0') {
             uint8_t opt = get_opt(av[i] + 1);
-            if (opt == -1) {
+            if (opt & (1 << 7)) {
                 g_file_nb = 0;
                 return NULL;
             }

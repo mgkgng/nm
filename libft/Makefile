@@ -1,4 +1,5 @@
 CC = gcc
+SANITIZE = -g -fsanitize=address
 CFLAGS = -Wall -Wextra -Werror
 
 SRCDIR = src

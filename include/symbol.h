@@ -1,9 +1,9 @@
 #pragma once
 
 #include <elf.h>
-#include <stdint.h>
 
 #include "libft.h"
+#include "elf_prop.h"
 
 typedef struct {
     char *name;
@@ -12,5 +12,5 @@ typedef struct {
     unsigned char bind;
 } symbol_t;
 
-t_list *extract_symbol_data_32(void *data, Elf32_Shdr *shdr, uint16_t string_table_index, uint16_t section_entry_nb);
-t_list *extract_symbol_data_64(void *data, Elf64_Shdr *shdr, uint16_t string_table_index, uint16_t section_entry_nb);
+t_list *extract_symbol_data_32(void *data, elf_prop_t *prop);
+t_list *extract_symbol_data_64(void *data, elf_prop_t *prop);
