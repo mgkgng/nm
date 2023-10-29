@@ -20,13 +20,13 @@ void ft_lstadd_back(t_list **alst, t_list *new_list) {
 	begin->next = new_list;
 }
 
-void ft_lstsort(t_list **alst, int flags, int (*cmp)(void *, void *, int)) {
+void ft_lstsort(t_list **alst, int (*cmp)(void *, void *), int reverse) {
 	t_list *begin = *alst;
 	t_list *tmp = NULL;
 	while (begin) {
 		tmp = begin->next;
 		while (tmp) {
-			if (cmp(begin->content, tmp->content, flags) > 0) {
+			if (cmp(begin->content, tmp->content) * -reverse < 0) {
 				void *tmp_content = begin->content;
 				begin->content = tmp->content;
 				tmp->content = tmp_content;

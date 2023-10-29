@@ -1,14 +1,19 @@
 #include "display.h"
 #include <stdio.h>
 
+int compare_symbol(void *a, void *b) {
+    symbol_t *sym_a = a;
+    symbol_t *sym_b = b;
+    return ft_strcmp(sym_a->name, sym_b->name);
+}
+
 unsigned char get_symbol_type_char(symbol_t *sym, elf_prop_t *prop) {
     char type_char = '?'; // Default is unknown
 
     // Check for undefined symbol
     if (sym->shndx == SHN_UNDEF) {
         type_char = 'U';
-    } else if (sym->shndx == SHN_ABS) {
-        // Check for absolute symbol
+    } else if (sym->shndx == SHN_ABS) { // Check for absolute symbol
         type_char = 'A';
     } else {
         // Determine symbol type based on its section header
@@ -34,7 +39,11 @@ unsigned char get_symbol_type_char(symbol_t *sym, elf_prop_t *prop) {
                 }
                 break;
 
-            // Other specific section types can be handled here as needed
+            case SHT_DYNAMIC:
+                type_char = 'D'; // Dynamic linking information
+                break;
+
+
 
             default:
                 break; // Keep as '?' for unknown/other
@@ -44,8 +53,10 @@ unsigned char get_symbol_type_char(symbol_t *sym, elf_prop_t *prop) {
     // Handle special STT (Symbol Table Type) values
     switch (sym->type) {
         case STT_OBJECT:
-            if (type_char == '?') {
-                type_char = 'D'; // Typically, these are data objects
+            if (type_char == 'U') {
+                type_char = 'C'; // Common symbols (uninitialized data)
+            } else {
+                type_char = 'D'; // Data symbols
             }
             break;
 
@@ -54,8 +65,11 @@ unsigned char get_symbol_type_char(symbol_t *sym, elf_prop_t *prop) {
             break;
 
         case STT_SECTION:
+            type_char = 'S'; // These symbols are associated with a section
+            break;
+
         case STT_FILE:
-            // We can choose to implement specific logic for these if desired
+            type_char = 'F'; // Source file associated with the object file
             break;
 
         case STT_COMMON:
@@ -66,7 +80,9 @@ unsigned char get_symbol_type_char(symbol_t *sym, elf_prop_t *prop) {
             type_char = 'T'; // Thread-local storage
             break;
 
-        // Add other cases as needed
+        case STT_GNU_IFUNC:
+            type_char = 'i'; // GNU Indirect Function
+            break;
 
         default:
             break;
@@ -91,9 +107,25 @@ unsigned char get_symbol_type_char(symbol_t *sym, elf_prop_t *prop) {
 }
 
 void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
+    // Sort the symbol data
+    if (g_opts & OPT_P)
+        ;
+    else if (g_opts & OPT_R)
+        ft_lstsort(&symbol_data, compare_symbol, SORT_REVERSE);
+    else
+        ft_lstsort(&symbol_data, compare_symbol, SORT_REVERSE);
+
     while (symbol_data) {
         symbol_t *symbol = symbol_data->content;
         if (symbol->bind == STB_LOCAL && !(g_opts & OPT_A)) {
+            symbol_data = symbol_data->next;
+            continue;
+        }
+        if (g_opts & OPT_G && symbol->bind != STB_GLOBAL) {
+            symbol_data = symbol_data->next;
+            continue;
+        }
+        if (g_opts & OPT_U && symbol->shndx != SHN_UNDEF) {
             symbol_data = symbol_data->next;
             continue;
         }

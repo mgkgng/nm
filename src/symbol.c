@@ -16,22 +16,6 @@
 //     printf("section entsize: %ld\n", curr_section->sh_entsize);
 // }
 
-
-// char translate_type(uint8_t type, uint64_t value) {
-//     if (value == 0 && type != STT_TLS) {
-//         return 'U';
-//     }
-
-//     switch (type) {
-//         case STT_OBJECT: return 'D';
-//         case STT_FUNC: return 'T';
-//         case STT_SECTION: return 'S';
-//         case STT_FILE: return 'F';
-//         default: return '?';
-//     }
-// }
-
-
 static void process_symbol_table32(void *data, Elf32_Shdr *symtab, char *string_table, t_list **symbol_data) {
     // Calculate the number of symbols
     int num_symbols = symtab->sh_size / symtab->sh_entsize;
@@ -70,6 +54,7 @@ static void process_symbol_table_64(void *data, Elf64_Shdr *symtab, char *string
         symbol->type = ELF64_ST_TYPE(sym->st_info);
         symbol->bind = ELF64_ST_BIND(sym->st_info);
         symbol->visibility = ELF64_ST_VISIBILITY(sym->st_other);
+        symbol->shndx = sym->st_shndx;
 
         ft_lstadd_back(symbol_data, ft_lstnew(symbol));
     }
