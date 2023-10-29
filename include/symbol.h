@@ -10,6 +10,8 @@ typedef struct {
     uint64_t value; // address
     unsigned char type;
     unsigned char bind;
+    unsigned char visibility;
+    uint16_t shndx;
 } symbol_t;
 
 t_list *extract_symbol_data_32(void *data, elf_prop_t *prop);

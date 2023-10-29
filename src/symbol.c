@@ -2,19 +2,19 @@
 
 #include <stdio.h>
 
-void print_section_data_64(Elf64_Shdr *curr_section, char *sh_string_table) {
-    printf("==========================\n");
-    printf("section name: %s\n", sh_string_table + curr_section->sh_name);
-    printf("section type: %ld\n", curr_section->sh_type);
-    printf("section flags: %ld\n", curr_section->sh_flags);
-    printf("section addr: %ld\n", curr_section->sh_addr);
-    printf("section offset: %ld\n", curr_section->sh_offset);
-    printf("section size: %ld\n", curr_section->sh_size);
-    printf("section link: %ld\n", curr_section->sh_link);
-    printf("section info: %ld\n", curr_section->sh_info);
-    printf("section addralign: %ld\n", curr_section->sh_addralign);
-    printf("section entsize: %ld\n", curr_section->sh_entsize);
-}
+// void print_section_data_64(Elf64_Shdr *curr_section, char *sh_string_table) {
+//     printf("==========================\n");
+//     printf("section name: %s\n", sh_string_table + curr_section->sh_name);
+//     printf("section type: %ld\n", curr_section->sh_type);
+//     printf("section flags: %ld\n", curr_section->sh_flags);
+//     printf("section addr: %ld\n", curr_section->sh_addr);
+//     printf("section offset: %ld\n", curr_section->sh_offset);
+//     printf("section size: %ld\n", curr_section->sh_size);
+//     printf("section link: %ld\n", curr_section->sh_link);
+//     printf("section info: %ld\n", curr_section->sh_info);
+//     printf("section addralign: %ld\n", curr_section->sh_addralign);
+//     printf("section entsize: %ld\n", curr_section->sh_entsize);
+// }
 
 
 // char translate_type(uint8_t type, uint64_t value) {
@@ -40,14 +40,14 @@ static void process_symbol_table32(void *data, Elf32_Shdr *symtab, char *string_
     Elf32_Sym *symbols = (Elf32_Sym *)((char *)data + symtab->sh_offset);
 
     for (int i = 0; i < num_symbols; i++) {
-        printf("iteration: %d\n", i);
         Elf32_Sym *sym = &symbols[i];
 
         symbol_t *symbol = malloc(sizeof(symbol_t));
 
         symbol->name = string_table + sym->st_name;
         symbol->value = sym->st_value;
-        symbol->type = translate_type(sym->st_info, sym->st_value);
+        
+        // symbol->type = translate_type(sym->st_info, sym->st_value);
         symbol->bind = ELF32_ST_BIND(sym->st_info);
 
         ft_lstadd_back(symbol_data, ft_lstnew(symbol));
@@ -69,6 +69,7 @@ static void process_symbol_table_64(void *data, Elf64_Shdr *symtab, char *string
         symbol->value = sym->st_value;
         symbol->type = ELF64_ST_TYPE(sym->st_info);
         symbol->bind = ELF64_ST_BIND(sym->st_info);
+        symbol->visibility = ELF64_ST_VISIBILITY(sym->st_other);
 
         ft_lstadd_back(symbol_data, ft_lstnew(symbol));
     }

@@ -111,3 +111,9 @@ int ft_printf(const char *s, ...) {
 	va_end(arg_n);
 	return len;
 }
+
+int tolower(int c) {
+	if (c >= 'A' && c <= 'Z')
+		return (c + 32);
+	return c;
+}

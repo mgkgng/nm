@@ -12,6 +12,7 @@ typedef struct s_list {
 void ft_putchar_fd(char c, int fd);
 void ft_putstr_fd(char *s, int fd);
 int ft_printf(const char *s, ...);
+int tolower(int c);
 void *ft_calloc(size_t count, size_t size);
 int ft_strcmp(const char *s1, const char *s2);
 t_list *ft_lstnew(void *content);

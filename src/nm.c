@@ -125,7 +125,7 @@ int run_nm(const char* path) {
     t_list *symbol_data = (prop.arch == ELFCLASS32) ? extract_symbol_data_32(addr, &prop) : extract_symbol_data_64(addr, &prop);
 
     // Display the symbol data considering the options
-    display_symbol_data(symbol_data);
+    display_symbol_data(symbol_data, &prop);
 
     // Free & unmap
     //ft_lstclear(&symbol_data, free);

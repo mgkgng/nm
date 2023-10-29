@@ -7,15 +7,15 @@ uint8_t g_file_nb = 0;
 static uint8_t get_opt(char *s) {
     uint8_t res = 0;
     for (int i = 0; s[i]; i++) {
-        if (s[i] == 'A')
+        if (s[i] == 'a')
             res |= OPT_A;
-        else if (s[i] == 'G')
+        else if (s[i] == 'g')
             res |= OPT_G;
-        else if (s[i] == 'U')
+        else if (s[i] == 'u')
             res |= OPT_U;
-        else if (s[i] == 'R')
+        else if (s[i] == 'r')
             res |= OPT_R;
-        else if (s[i] == 'P')
+        else if (s[i] == 'p')
             res |= OPT_P;
         else {
             ft_putstr_fd("nm: invalid option -- '", STDERR_FILENO);
