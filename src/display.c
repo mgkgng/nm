@@ -19,7 +19,76 @@ void write_hex(uint64_t value) {
     write(STDOUT_FILENO, buffer, 16);
 }
 
-unsigned char get_symbol_type_char(symbol_t *sym, elf_prop_t *prop) {
+void display_addr(uint64_t addr, unsigned char shndx) {
+    if (shndx == SHN_UNDEF)
+        write(STDOUT_FILENO, "                ", 16);
+    else
+        write_hex(addr);
+    write(STDOUT_FILENO, " ", 1);
+
+}
+
+unsigned char get_symbol_type_char_32(symbol_t *sym, elf_prop_t *prop) {
+    if (!sym->value && sym->shndx == SHN_UNDEF && sym->bind == STB_LOCAL) {
+        return 0;
+    }
+    if (sym->shndx == SHN_ABS)
+        return (sym->bind == STB_LOCAL) ? 'a' : 'A';
+
+    Elf32_Shdr *curr_section = prop->section_header + sym->shndx * prop->section_entry_size;
+    char *section_name = prop->shstrtab + curr_section->sh_name;
+
+    if (ft_strcmp(section_name, ".bss") == 0)
+        return (sym->bind == STB_LOCAL) ? 'b' : 'B';
+    else if (ft_strcmp(section_name, ".debug") == 0)
+        return 'N';
+    else if (ft_strcmp(section_name, ".sbss") == 0)
+        return (sym->bind == STB_LOCAL) ? 's' : 'S';
+
+    if (sym->shndx == SHN_ABS)
+        return 'A';
+    else if (sym->shndx == SHN_COMMON)
+        return 'C';
+
+    if (curr_section->sh_type == SHT_PROGBITS && curr_section->sh_flags & SHF_ALLOC) {
+        if (curr_section->sh_flags & SHF_EXECINSTR)
+            return (sym->bind == STB_LOCAL) ? 't' : 'T';
+        else if (curr_section->sh_flags & SHF_WRITE)
+            return (sym->bind == STB_LOCAL) ? 'd' : 'D';
+        else
+            return (sym->bind == STB_LOCAL) ? 'r' : 'R';
+    } else if (curr_section->sh_type == SHT_NOBITS && curr_section->sh_flags & SHF_ALLOC) {
+        if (curr_section->sh_flags & SHF_WRITE)
+            return (sym->bind == STB_LOCAL) ? 'b' : 'B';
+        else
+            return (sym->bind == STB_LOCAL) ? 'n' : 'N';
+    } else if (curr_section->sh_type == SHT_DYNAMIC) {
+        return (sym->bind == STB_LOCAL) ? 'd' : 'D';
+    }
+
+    if (sym->bind == STB_WEAK) {
+        if (sym->type == STT_OBJECT)
+            return (sym->shndx == SHN_UNDEF) ? 'v' : 'V';
+        return (sym->shndx == SHN_UNDEF) ? 'w' : 'W';
+    } else if (sym->bind == STB_GNU_UNIQUE) {
+        return 'u';
+    }
+
+    if (sym->type == STT_GNU_IFUNC)
+        return 'i';
+
+    if (sym->shndx == SHN_UNDEF)
+        return 'U';
+    
+    if (ft_strcmp(section_name, ".data") == 0)
+        return (sym->bind == STB_LOCAL) ? 'd' : 'D';
+    if (ft_strcmp(section_name, ".rodata"))
+        return (sym->bind == STB_LOCAL) ? 'r' : 'R';
+    
+    return '?';
+}
+
+unsigned char get_symbol_type_char_64(symbol_t *sym, elf_prop_t *prop) {
     if (!sym->value && sym->shndx == SHN_UNDEF && sym->bind == STB_LOCAL) {
         return 0;
     }
@@ -79,23 +148,13 @@ unsigned char get_symbol_type_char(symbol_t *sym, elf_prop_t *prop) {
     return '?';
 }
 
-void display_addr(uint64_t addr, unsigned char shndx) {
-    if (shndx == SHN_UNDEF)
-        write(STDOUT_FILENO, "                ", 16);
-    else
-        write_hex(addr);
-    write(STDOUT_FILENO, " ", 1);
-
-}
-
 void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
     // Sort the symbol data
-    if (g_opts & OPT_P)
-        ;
-    else if (g_opts & OPT_R)
-        ft_lstsort(&symbol_data, compare_symbol, SORT_REVERSE);
-    else
-        ft_lstsort(&symbol_data, compare_symbol, SORT_DEFAULT);
+    if (!(g_opts & OPT_P))
+        ft_lstsort(&symbol_data, compare_symbol, (g_opts & OPT_R) ? SORT_REVERSE : SORT_DEFAULT);
+
+    // Get the function pointer according to the architecture
+    unsigned char (*get_symbol_type_char)(symbol_t *, elf_prop_t *) = (prop->arch == ELFCLASS32) ? get_symbol_type_char_32 : get_symbol_type_char_64;
 
     while (symbol_data) {
         symbol_t *symbol = symbol_data->content;
@@ -104,7 +163,7 @@ void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
             symbol_data = symbol_data->next;
             continue;
         }
-        if (g_opts & OPT_G && symbol->bind != STB_GLOBAL) {
+        if (g_opts & OPT_G && symbol->bind == STB_LOCAL) {
             symbol_data = symbol_data->next;
             continue;
         }
