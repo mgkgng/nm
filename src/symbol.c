@@ -78,6 +78,7 @@ t_list *extract_symbol_data_64(void *data, elf_prop_t *prop) {
     // Locate the section header string table
     Elf64_Shdr *shstr_section = &shdr_start[prop->string_table_index];
     char *shstrtab = (char *) data + shstr_section->sh_offset;
+    prop->shstrtab = shstrtab;
 
     // Iterate over the section headers to locate the string table and symbol tables
     Elf64_Shdr *string_table = NULL;

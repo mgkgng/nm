@@ -7,103 +7,85 @@ int compare_symbol(void *a, void *b) {
     return ft_strcmp(sym_a->name, sym_b->name);
 }
 
+void write_hex(uint64_t value) {
+    char buffer[17];
+    const char hex[] = "0123456789abcdef";
+
+    for (int i = 15; i >= 0; i--) {
+        buffer[i] = hex[value & 0xF];
+        value >>= 4;
+    }
+    buffer[16] = '\0';
+    write(STDOUT_FILENO, buffer, 16);
+}
+
 unsigned char get_symbol_type_char(symbol_t *sym, elf_prop_t *prop) {
-    char type_char = '?'; // Default is unknown
+    if (!sym->value && sym->shndx == SHN_UNDEF && sym->bind == STB_LOCAL) {
+        return 0;
+    }
+    if (sym->shndx == SHN_ABS)
+        return (sym->bind == STB_LOCAL) ? 'a' : 'A';
 
-    // Check for undefined symbol
-    if (sym->shndx == SHN_UNDEF) {
-        type_char = 'U';
-    } else if (sym->shndx == SHN_ABS) { // Check for absolute symbol
-        type_char = 'A';
-    } else {
-        // Determine symbol type based on its section header
-        Elf64_Shdr section_header = ((Elf64_Shdr *) (prop->section_header))[sym->shndx];
-        switch (section_header.sh_type) {
-            case SHT_PROGBITS:
-                if (section_header.sh_flags & SHF_ALLOC) {
-                    if (section_header.sh_flags & SHF_EXECINSTR) {
-                        type_char = 'T'; // code section
-                    } else if (section_header.sh_flags & SHF_WRITE) {
-                        type_char = 'D'; // Initialized data section
-                    } else {
-                        type_char = 'R'; // Read-only data section
-                    }
-                }
-                break;
+    Elf64_Shdr *curr_section = prop->section_header + sym->shndx * prop->section_entry_size;
+    char *section_name = prop->shstrtab + curr_section->sh_name;
 
-            case SHT_NOBITS:
-                if (section_header.sh_flags & SHF_ALLOC) {
-                    if (section_header.sh_flags & SHF_WRITE) {
-                        type_char = 'B'; // Uninitialized data section (BSS)
-                    }
-                }
-                break;
+    if (ft_strcmp(section_name, ".bss") == 0)
+        return (sym->bind == STB_LOCAL) ? 'b' : 'B';
+    else if (ft_strcmp(section_name, ".debug") == 0)
+        return 'N';
+    else if (ft_strcmp(section_name, ".sbss") == 0)
+        return (sym->bind == STB_LOCAL) ? 's' : 'S';
 
-            case SHT_DYNAMIC:
-                type_char = 'D'; // Dynamic linking information
-                break;
+    if (sym->shndx == SHN_ABS)
+        return 'A';
+    else if (sym->shndx == SHN_COMMON)
+        return 'C';
 
-
-
-            default:
-                break; // Keep as '?' for unknown/other
-        }
+    if (curr_section->sh_type == SHT_PROGBITS && curr_section->sh_flags & SHF_ALLOC) {
+        if (curr_section->sh_flags & SHF_EXECINSTR)
+            return (sym->bind == STB_LOCAL) ? 't' : 'T';
+        else if (curr_section->sh_flags & SHF_WRITE)
+            return (sym->bind == STB_LOCAL) ? 'd' : 'D';
+        else
+            return (sym->bind == STB_LOCAL) ? 'r' : 'R';
+    } else if (curr_section->sh_type == SHT_NOBITS && curr_section->sh_flags & SHF_ALLOC) {
+        if (curr_section->sh_flags & SHF_WRITE)
+            return (sym->bind == STB_LOCAL) ? 'b' : 'B';
+        else
+            return (sym->bind == STB_LOCAL) ? 'n' : 'N';
+    } else if (curr_section->sh_type == SHT_DYNAMIC) {
+        return (sym->bind == STB_LOCAL) ? 'd' : 'D';
     }
 
-    // Handle special STT (Symbol Table Type) values
-    switch (sym->type) {
-        case STT_OBJECT:
-            if (type_char == 'U') {
-                type_char = 'C'; // Common symbols (uninitialized data)
-            } else {
-                type_char = 'D'; // Data symbols
-            }
-            break;
-
-        case STT_FUNC:
-            type_char = 'T'; // Functions are in the text section
-            break;
-
-        case STT_SECTION:
-            type_char = 'S'; // These symbols are associated with a section
-            break;
-
-        case STT_FILE:
-            type_char = 'F'; // Source file associated with the object file
-            break;
-
-        case STT_COMMON:
-            type_char = 'C'; // Common symbols (uninitialized data)
-            break;
-
-        case STT_TLS:
-            type_char = 'T'; // Thread-local storage
-            break;
-
-        case STT_GNU_IFUNC:
-            type_char = 'i'; // GNU Indirect Function
-            break;
-
-        default:
-            break;
-    }
-
-    // Handle weak symbols (these could override previous decisions except 'U')
     if (sym->bind == STB_WEAK) {
-        type_char = (sym->shndx == SHN_UNDEF) ? 'w' : 'W';
+        if (sym->type == STT_OBJECT)
+            return (sym->shndx == SHN_UNDEF) ? 'v' : 'V';
+        return (sym->shndx == SHN_UNDEF) ? 'w' : 'W';
+    } else if (sym->bind == STB_GNU_UNIQUE) {
+        return 'u';
     }
 
-    // For unique global symbols (GNU extension), use 'u'
-    if (sym->bind == STB_GNU_UNIQUE) {
-        type_char = 'u';
-    }
+    if (sym->type == STT_GNU_IFUNC)
+        return 'i';
 
-    // If the symbol is local, convert type character to lowercase
-    if (sym->bind == STB_LOCAL) {
-        type_char = tolower(type_char);
-    }
+    if (sym->shndx == SHN_UNDEF)
+        return 'U';
+    
+    if (ft_strcmp(section_name, ".data") == 0)
+        return (sym->bind == STB_LOCAL) ? 'd' : 'D';
+    if (ft_strcmp(section_name, ".rodata"))
+        return (sym->bind == STB_LOCAL) ? 'r' : 'R';
+    
+    return '?';
+}
 
-    return type_char;
+void display_addr(uint64_t addr, unsigned char shndx) {
+    if (shndx == SHN_UNDEF)
+        write(STDOUT_FILENO, "                ", 16);
+    else
+        write_hex(addr);
+    write(STDOUT_FILENO, " ", 1);
+
 }
 
 void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
@@ -113,11 +95,12 @@ void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
     else if (g_opts & OPT_R)
         ft_lstsort(&symbol_data, compare_symbol, SORT_REVERSE);
     else
-        ft_lstsort(&symbol_data, compare_symbol, SORT_REVERSE);
+        ft_lstsort(&symbol_data, compare_symbol, SORT_DEFAULT);
 
     while (symbol_data) {
         symbol_t *symbol = symbol_data->content;
-        if (symbol->bind == STB_LOCAL && !(g_opts & OPT_A)) {
+
+        if (!(g_opts & OPT_A) && (symbol->type == STT_FILE || symbol->type == STT_SECTION)) {
             symbol_data = symbol_data->next;
             continue;
         }
@@ -129,7 +112,15 @@ void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
             symbol_data = symbol_data->next;
             continue;
         }
-        printf("%016lx %c %s\n", symbol->value, get_symbol_type_char(symbol, prop), symbol->name);
+
+        unsigned char symbol_char = get_symbol_type_char(symbol, prop);
+        if (!symbol_char) {
+            symbol_data = symbol_data->next;
+            continue;
+        }
+
+        display_addr(symbol->value, symbol->shndx);
+        ft_printf("%c %s\n", symbol_char, symbol->name);
         symbol_data = symbol_data->next;
     }
 }

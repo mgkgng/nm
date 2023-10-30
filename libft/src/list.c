@@ -26,7 +26,7 @@ void ft_lstsort(t_list **alst, int (*cmp)(void *, void *), int reverse) {
 	while (begin) {
 		tmp = begin->next;
 		while (tmp) {
-			if (cmp(begin->content, tmp->content) * -reverse < 0) {
+			if (cmp(begin->content, tmp->content) * reverse > 0) {
 				void *tmp_content = begin->content;
 				begin->content = tmp->content;
 				tmp->content = tmp_content;

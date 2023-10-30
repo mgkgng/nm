@@ -9,4 +9,5 @@ typedef struct {
     uint16_t section_entry_nb;
     uint16_t section_entry_size;
     uint16_t string_table_index;
+    char *shstrtab;
 } elf_prop_t;

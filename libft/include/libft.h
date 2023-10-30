@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#define SORT_DEFAULT 0
-#define SORT_REVERSE 1
+#define SORT_DEFAULT 1
+#define SORT_REVERSE -1
 
 typedef struct s_list {
     void *content;
