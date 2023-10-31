@@ -7,7 +7,7 @@ int compare_symbol(void *a, void *b) {
     return ft_strcmp(sym_a->name, sym_b->name);
 }
 
-void write_hex(uint64_t value) {
+static void write_hex(uint64_t value) {
     char buffer[17];
     const char hex[] = "0123456789abcdef";
 
@@ -19,7 +19,7 @@ void write_hex(uint64_t value) {
     write(STDOUT_FILENO, buffer, 16);
 }
 
-void display_addr(uint64_t addr, unsigned char shndx) {
+static void display_addr(uint64_t addr, unsigned char shndx) {
     if (shndx == SHN_UNDEF)
         write(STDOUT_FILENO, "                ", 16);
     else
@@ -28,7 +28,7 @@ void display_addr(uint64_t addr, unsigned char shndx) {
 
 }
 
-unsigned char get_symbol_type_char_32(symbol_t *sym, elf_prop_t *prop) {
+static unsigned char get_symbol_type_char_32(symbol_t *sym, elf_prop_t *prop) {
     if (!sym->value && sym->shndx == SHN_UNDEF && sym->bind == STB_LOCAL) {
         return 0;
     }
@@ -88,7 +88,7 @@ unsigned char get_symbol_type_char_32(symbol_t *sym, elf_prop_t *prop) {
     return '?';
 }
 
-unsigned char get_symbol_type_char_64(symbol_t *sym, elf_prop_t *prop) {
+static unsigned char get_symbol_type_char_64(symbol_t *sym, elf_prop_t *prop) {
     if (!sym->value && sym->shndx == SHN_UNDEF && sym->bind == STB_LOCAL) {
         return 0;
     }
@@ -149,7 +149,9 @@ unsigned char get_symbol_type_char_64(symbol_t *sym, elf_prop_t *prop) {
 }
 
 void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
-    // Sort the symbol data
+    // Sort the symbol data + Apply sort options
+    // -r : reverse sort
+    // -p : don't sort
     if (!(g_opts & OPT_P))
         ft_lstsort(&symbol_data, compare_symbol, (g_opts & OPT_R) ? SORT_REVERSE : SORT_DEFAULT);
 
@@ -159,6 +161,10 @@ void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
     while (symbol_data) {
         symbol_t *symbol = symbol_data->content;
 
+        // Apply options
+        // -a : display all symbols
+        // -g : display only global symbols
+        // -u : display only undefined symbols
         if (!(g_opts & OPT_A) && (symbol->type == STT_FILE || symbol->type == STT_SECTION)) {
             symbol_data = symbol_data->next;
             continue;
@@ -172,14 +178,18 @@ void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
             continue;
         }
 
+        // Get the symbol type character
         unsigned char symbol_char = get_symbol_type_char(symbol, prop);
         if (!symbol_char) {
             symbol_data = symbol_data->next;
             continue;
         }
 
+        // Display the symbol data in the correct format
         display_addr(symbol->value, symbol->shndx);
         ft_printf("%c %s\n", symbol_char, symbol->name);
+
+        // Next symbol
         symbol_data = symbol_data->next;
     }
 }

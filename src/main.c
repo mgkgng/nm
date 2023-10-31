@@ -14,6 +14,8 @@ int main(int argc, char **argv) {
     while (files) {
         res = run_nm(files->content);
         files = files->next;
+        if (files)
+            ft_printf("\n");
     }
     ft_lstclear(&files, free);
     return res;

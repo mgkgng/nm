@@ -7,7 +7,8 @@
 
 typedef struct {
     char *name;
-    uint64_t value; // address
+    uint64_t value_64;
+    uint32_t value_32;
     unsigned char type;
     unsigned char bind;
     unsigned char visibility;

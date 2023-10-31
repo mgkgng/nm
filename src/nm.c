@@ -128,7 +128,7 @@ int run_nm(const char* path) {
     display_symbol_data(symbol_data, &prop);
 
     // Free & unmap
-    //ft_lstclear(&symbol_data, free);
+    ft_lstclear(&symbol_data, free);
     munmap(addr, len);
     return 0;
 }
