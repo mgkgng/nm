@@ -28,13 +28,13 @@ static void process_symbol_table_32(void *data, Elf32_Shdr *symtab, char *string
 
         symbol_t *symbol = malloc(sizeof(symbol_t));
         symbol->name = string_table + sym->st_name;
-        symbol->value = sym->st_value;
+        symbol->addr_32 = sym->st_value;
         symbol->type = ELF32_ST_TYPE(sym->st_info);
         symbol->bind = ELF32_ST_BIND(sym->st_info);
         symbol->visibility = ELF32_ST_VISIBILITY(sym->st_other);
         symbol->shndx = sym->st_shndx;
 
-        if (symbol->name[0] == '\0' && symbol->shndx != SHN_UNDEF) {
+        if (symbol->name[0] == '\0' && symbol->shndx != SHN_UNDEF && symbol->shndx != SHN_ABS) {
             Elf32_Shdr *curr_section = prop->section_header + symbol->shndx * prop->section_entry_size;
             char *section_name = prop->shstrtab + curr_section->sh_name;
             symbol->name = section_name;
@@ -56,13 +56,13 @@ static void process_symbol_table_64(void *data, Elf64_Shdr *symtab, char *string
 
         symbol_t *symbol = malloc(sizeof(symbol_t));
         symbol->name = string_table + sym->st_name;
-        symbol->value = sym->st_value;
+        symbol->addr_64 = sym->st_value;
         symbol->type = ELF64_ST_TYPE(sym->st_info);
         symbol->bind = ELF64_ST_BIND(sym->st_info);
         symbol->visibility = ELF64_ST_VISIBILITY(sym->st_other);
         symbol->shndx = sym->st_shndx;
 
-        if (symbol->name[0] == '\0' && symbol->shndx != SHN_UNDEF) {
+        if (symbol->name[0] == '\0' && symbol->shndx != SHN_UNDEF && symbol->shndx != SHN_ABS && symbol->shndx != SHN_COMMON) {
             Elf64_Shdr *curr_section = prop->section_header + symbol->shndx * prop->section_entry_size;
             char *section_name = prop->shstrtab + curr_section->sh_name;
             symbol->name = section_name;
@@ -89,7 +89,6 @@ t_list *extract_symbol_data_32(void *data, elf_prop_t *prop) {
     // Iterate over the section headers to locate the string table and symbol tables
     Elf32_Shdr *string_table = NULL;
     Elf32_Shdr *symbol_table = NULL;
-    Elf32_Shdr *dyn_symbol_table = NULL;
     t_list *symbol_data = NULL;
     for (int i = 0; i < prop->section_entry_nb; i++) {
         Elf32_Shdr *curr_section = (Elf32_Shdr *)((char *)shdr_start + (i * prop->section_entry_size));
@@ -102,14 +101,10 @@ t_list *extract_symbol_data_32(void *data, elf_prop_t *prop) {
             string_table = curr_section;
         else if (ft_strcmp(section_name, ".symtab") == 0)
             symbol_table = curr_section;
-        else if (ft_strcmp(section_name, ".dynsym") == 0)
-            dyn_symbol_table = curr_section;
     }
 
     if (symbol_table)
         process_symbol_table_32(data, symbol_table, (char *) data + string_table->sh_offset, prop, &symbol_data);
-    if (dyn_symbol_table)
-        process_symbol_table_32(data, dyn_symbol_table, (char *) data + string_table->sh_offset, prop, &symbol_data);
 
     return symbol_data;
 
@@ -132,7 +127,6 @@ t_list *extract_symbol_data_64(void *data, elf_prop_t *prop) {
     // Iterate over the section headers to locate the string table and symbol tables
     Elf64_Shdr *string_table = NULL;
     Elf64_Shdr *symbol_table = NULL;
-    Elf64_Shdr *dyn_symbol_table = NULL;
     t_list *symbol_data = NULL;
     for (int i = 0; i < prop->section_entry_nb; i++) {
         Elf64_Shdr *curr_section = (Elf64_Shdr *)((char *)shdr_start + (i * prop->section_entry_size));
@@ -145,14 +139,10 @@ t_list *extract_symbol_data_64(void *data, elf_prop_t *prop) {
             string_table = curr_section;
         else if (ft_strcmp(section_name, ".symtab") == 0)
             symbol_table = curr_section;
-        else if (ft_strcmp(section_name, ".dynsym") == 0)
-            dyn_symbol_table = curr_section;
     }
 
     if (symbol_table)
         process_symbol_table_64(data, symbol_table, (char *) data + string_table->sh_offset, prop, &symbol_data);
-    if (dyn_symbol_table)
-        process_symbol_table_64(data, dyn_symbol_table, (char *) data + string_table->sh_offset, prop, &symbol_data);
 
     return symbol_data;
 }

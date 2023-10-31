@@ -7,7 +7,19 @@ int compare_symbol(void *a, void *b) {
     return ft_strcmp(sym_a->name, sym_b->name);
 }
 
-static void write_hex(uint64_t value) {
+static void write_hex_32(uint32_t value) {
+    char buffer[9];
+    const char hex[] = "0123456789abcdef";
+
+    for (int i = 7; i >= 0; i--) {
+        buffer[i] = hex[value & 0xF];
+        value >>= 4;
+    }
+    buffer[8] = '\0';
+    write(STDOUT_FILENO, buffer, 8);
+}
+
+static void write_hex_64(uint64_t value) {
     char buffer[17];
     const char hex[] = "0123456789abcdef";
 
@@ -19,17 +31,25 @@ static void write_hex(uint64_t value) {
     write(STDOUT_FILENO, buffer, 16);
 }
 
-static void display_addr(uint64_t addr, unsigned char shndx) {
+static void display_addr_32(uint32_t value, unsigned char shndx) {
+    if (shndx == SHN_UNDEF)
+        write(STDOUT_FILENO, "        ", 8);
+    else
+        write_hex_32(value);
+    write(STDOUT_FILENO, " ", 1);
+}
+
+static void display_addr_64(uint64_t value, unsigned char shndx) {
     if (shndx == SHN_UNDEF)
         write(STDOUT_FILENO, "                ", 16);
     else
-        write_hex(addr);
+        write_hex_64(value);
     write(STDOUT_FILENO, " ", 1);
 
 }
 
 static unsigned char get_symbol_type_char_32(symbol_t *sym, elf_prop_t *prop) {
-    if (!sym->value && sym->shndx == SHN_UNDEF && sym->bind == STB_LOCAL) {
+    if (!sym->addr_32 && sym->shndx == SHN_UNDEF && sym->bind == STB_LOCAL) {
         return 0;
     }
     if (sym->shndx == SHN_ABS)
@@ -89,9 +109,9 @@ static unsigned char get_symbol_type_char_32(symbol_t *sym, elf_prop_t *prop) {
 }
 
 static unsigned char get_symbol_type_char_64(symbol_t *sym, elf_prop_t *prop) {
-    if (!sym->value && sym->shndx == SHN_UNDEF && sym->bind == STB_LOCAL) {
+    if (!sym->addr_64 && sym->shndx == SHN_UNDEF && sym->bind == STB_LOCAL)
         return 0;
-    }
+        
     if (sym->shndx == SHN_ABS)
         return (sym->bind == STB_LOCAL) ? 'a' : 'A';
 
@@ -165,7 +185,7 @@ void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
         // -a : display all symbols
         // -g : display only global symbols
         // -u : display only undefined symbols
-        if (!(g_opts & OPT_A) && (symbol->type == STT_FILE || symbol->type == STT_SECTION)) {
+        if (!(g_opts & OPT_A) && (symbol->type == STT_FILE || symbol->type == STT_SECTION || symbol->type == STT_NOTYPE)) {
             symbol_data = symbol_data->next;
             continue;
         }
@@ -186,7 +206,10 @@ void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
         }
 
         // Display the symbol data in the correct format
-        display_addr(symbol->value, symbol->shndx);
+        if (prop->arch == ELFCLASS32)
+            display_addr_32(symbol->addr_32, symbol->shndx);
+        else
+            display_addr_64(symbol->addr_64, symbol->shndx);
         ft_printf("%c %s\n", symbol_char, symbol->name);
 
         // Next symbol

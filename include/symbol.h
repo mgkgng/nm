@@ -7,12 +7,12 @@
 
 typedef struct {
     char *name;
-    uint64_t value_64;
-    uint32_t value_32;
     unsigned char type;
     unsigned char bind;
     unsigned char visibility;
     uint16_t shndx;
+    Elf32_Addr addr_32;
+    Elf64_Addr addr_64;
 } symbol_t;
 
 t_list *extract_symbol_data_32(void *data, elf_prop_t *prop);
