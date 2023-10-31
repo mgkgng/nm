@@ -111,7 +111,7 @@ static unsigned char get_symbol_type_char_32(symbol_t *sym, elf_prop_t *prop) {
 static unsigned char get_symbol_type_char_64(symbol_t *sym, elf_prop_t *prop) {
     if (!sym->addr_64 && sym->shndx == SHN_UNDEF && sym->bind == STB_LOCAL)
         return 0;
-        
+
     if (sym->shndx == SHN_ABS)
         return (sym->bind == STB_LOCAL) ? 'a' : 'A';
 
@@ -185,7 +185,7 @@ void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
         // -a : display all symbols
         // -g : display only global symbols
         // -u : display only undefined symbols
-        if (!(g_opts & OPT_A) && (symbol->type == STT_FILE || symbol->type == STT_SECTION || symbol->type == STT_NOTYPE)) {
+        if (!(g_opts & OPT_A) && (symbol->type == STT_FILE || symbol->type == STT_SECTION)) {
             symbol_data = symbol_data->next;
             continue;
         }
