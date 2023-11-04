@@ -19,7 +19,7 @@
 //     uint16_t      e_shstrndx;            /* Section header string table index */
 // } ElfN_Ehdr;
 
-static void *read_binary(const char *path, size_t *length) {
+static void *read_binary(const char *path, elf_prop_t *prop) {
     int fd = open(path, O_RDONLY);
     if (fd < 0) {
         ft_printf("ft_nm: Error opening file '%s'\n", path);
@@ -28,7 +28,7 @@ static void *read_binary(const char *path, size_t *length) {
 
     struct stat statbuf;
     if (fstat(fd, &statbuf) < 0) {
-        
+        ft_putstr_fd("ft_nm: Error fstat\n", STDERR_FILENO);
         close(fd);
         return NULL;
     }
@@ -38,9 +38,15 @@ static void *read_binary(const char *path, size_t *length) {
         close(fd);
         return NULL;
     }
-    *length = statbuf.st_size;
 
-    void *addr = mmap(NULL, *length, PROT_READ, MAP_PRIVATE, fd, 0);
+    if ((long unsigned int) statbuf.st_size < sizeof(Elf32_Ehdr)) {
+        ft_printf("ft_nm: %s: file too small.\n", path);
+        close(fd);
+        return NULL;
+    }
+    prop->file_size = statbuf.st_size;
+
+    void *addr = mmap(NULL, prop->file_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (addr == MAP_FAILED) {
         ft_putstr_fd("error: mmap\n", STDERR_FILENO);
         close(fd);
@@ -53,12 +59,23 @@ static void *read_binary(const char *path, size_t *length) {
 
 static int retrieve_section_header_data_32(const uint8_t *data, elf_prop_t *prop, const char *path) {
     Elf32_Ehdr *ehdr = (Elf32_Ehdr *) data;
+
+    if (prop->file_size < ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shnum) {
+        ft_printf("ft_nm: %s: file too small\n", path);
+        return -1;
+    }
+    prop->section_header = (void *) data + ehdr->e_shoff;
+
     if (ehdr->e_shstrndx == SHN_UNDEF) {
         ft_printf("ft_nm: %s: no section header string table\n", path);
         return -1;
     }
+    if (ehdr->e_shstrndx >= ehdr->e_shnum) {
+        ft_printf("ft_nm: %s: invalid section header string table index\n", path);
+        return -1;
+    }
     prop->string_table_index = ehdr->e_shstrndx;
-    prop->section_header = (void *) data + ehdr->e_shoff;
+
     prop->section_entry_nb = ehdr->e_shnum;
     prop->section_entry_size = ehdr->e_shentsize;
     return 0;
@@ -66,12 +83,23 @@ static int retrieve_section_header_data_32(const uint8_t *data, elf_prop_t *prop
 
 static int retrieve_section_header_data_64(const uint8_t *data, elf_prop_t *prop, const char *path) {
     Elf64_Ehdr *ehdr = (Elf64_Ehdr *) data;
+
+    if (prop->file_size < ehdr->e_shoff + ehdr->e_shentsize * ehdr->e_shnum) {
+        ft_printf("ft_nm: %s: file too small\n", path);
+        return -1;
+    }
+    prop->section_header = (void *) data + ehdr->e_shoff;
+
     if (ehdr->e_shstrndx == SHN_UNDEF) {
         ft_printf("ft_nm: %s: no section header string table\n", path);
         return -1;
     }
+    if (ehdr->e_shstrndx >= ehdr->e_shnum) {
+        ft_printf("ft_nm: %s: invalid section header string table index\n", path);
+        return -1;
+    }
     prop->string_table_index = ehdr->e_shstrndx;
-    prop->section_header = (void *) data + ehdr->e_shoff;
+
     prop->section_entry_nb = ehdr->e_shnum;
     prop->section_entry_size = ehdr->e_shentsize;
     return 0;
@@ -86,14 +114,29 @@ static int process_elf_header(const uint8_t *data, elf_prop_t *prop, const char 
     }
 
     // Check if the architecture is supported
-    if (data[4] == ELFCLASSNONE) {
+    if (data[4] != ELFCLASS32 && data[4] != ELFCLASS64) {
         ft_printf("ft_nm: %s: invalid architecture\n", path);
+        return -1;
+    }
+
+    if (data[5] != ELFDATA2LSB && data[5] != ELFDATA2MSB) {
+        ft_printf("ft_nm: %s: invalid encoding\n", path);
+        return -1;
+    }
+
+    if (data[6] != EV_CURRENT) {
+        ft_printf("ft_nm: %s: invalid version\n", path);
         return -1;
     }
 
     // save arch and encoding information which will be essential for further parsing
     prop->arch = data[4];
     prop->encoding = data[5];
+
+    if (prop->arch == ELFCLASS64 && prop->file_size < sizeof(Elf64_Ehdr)) {
+        ft_printf("ft_nm: %s: file too small\n", path);
+        return -1;
+    }
 
     // Retrieve information about the section header
     return (data[4] == ELFCLASS32) 
@@ -102,18 +145,18 @@ static int process_elf_header(const uint8_t *data, elf_prop_t *prop, const char 
 }
 
 
+#include <stdio.h>
 int run_nm(const char* path) {
     // Read the binary file
-    size_t len;
-    void *addr = read_binary(path, &len);
+    elf_prop_t prop;
+    void *addr = read_binary(path, &prop);
     if (!addr)
         return 1;
     
     // Process ELF header and retrieve information about the binary
-    elf_prop_t prop;
     int res = process_elf_header(addr, &prop, path);
     if (res < 0) {
-        munmap(addr, len);
+        munmap(addr, prop.file_size);
         return 1;
     }
 
@@ -122,13 +165,20 @@ int run_nm(const char* path) {
         ft_printf("%s:\n", path);
 
     // Extract symbol data in linked list
-    t_list *symbol_data = (prop.arch == ELFCLASS32) ? extract_symbol_data_32(addr, &prop) : extract_symbol_data_64(addr, &prop);
+    t_list *symbol_data = (prop.arch == ELFCLASS32) 
+        ? extract_symbol_data_32(addr, &prop) 
+        : extract_symbol_data_64(addr, &prop);
+
+    if (!symbol_data) {
+        munmap(addr, prop.file_size);
+        return 1;
+    }
 
     // Display the symbol data considering the options
     display_symbol_data(symbol_data, &prop);
 
     // Free & unmap
     ft_lstclear(&symbol_data, free);
-    munmap(addr, len);
+    munmap(addr, prop.file_size);
     return 0;
 }

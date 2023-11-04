@@ -10,4 +10,5 @@ typedef struct {
     uint16_t section_entry_size;
     uint16_t string_table_index;
     char *shstrtab;
+    uint64_t file_size;
 } elf_prop_t;

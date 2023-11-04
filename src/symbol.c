@@ -16,11 +16,15 @@
 //     printf("section entsize: %ld\n", curr_section->sh_entsize);
 // }
 
-static void process_symbol_table_32(void *data, Elf32_Shdr *symtab, char *string_table, elf_prop_t *prop, t_list **symbol_data) {
+static int process_symbol_table_32(void *data, Elf32_Shdr *symtab, char *string_table, elf_prop_t *prop, t_list **symbol_data) {
     // Calculate the number of symbols
     int num_symbols = symtab->sh_size / symtab->sh_entsize;
 
     // Pointer to the array of symbols
+    if (symtab->sh_offset > prop->file_size || symtab->sh_offset + symtab->sh_size > prop->file_size) {
+        ft_printf("ft_nm: invalid symbol table\n");
+        return -1;
+    }
     Elf32_Sym *symbols = (Elf32_Sym *)((char *)data + symtab->sh_offset);
 
     for (int i = 0; i < num_symbols; i++) {
@@ -33,6 +37,10 @@ static void process_symbol_table_32(void *data, Elf32_Shdr *symtab, char *string
         symbol->bind = ELF32_ST_BIND(sym->st_info);
         symbol->visibility = ELF32_ST_VISIBILITY(sym->st_other);
         symbol->shndx = sym->st_shndx;
+        if (symbol->shndx >= prop->section_entry_nb && symbol->shndx != SHN_ABS && symbol->shndx != SHN_COMMON) {
+            ft_printf("ft_nm: invalid section header index\n");
+            return -1;
+        }
 
         if (symbol->name[0] == '\0' && symbol->shndx != SHN_UNDEF && symbol->shndx != SHN_ABS) {
             Elf32_Shdr *curr_section = prop->section_header + symbol->shndx * prop->section_entry_size;
@@ -42,13 +50,18 @@ static void process_symbol_table_32(void *data, Elf32_Shdr *symtab, char *string
 
         ft_lstadd_back(symbol_data, ft_lstnew(symbol));
     }
+    return 0;
 }
 
-static void process_symbol_table_64(void *data, Elf64_Shdr *symtab, char *string_table, elf_prop_t *prop, t_list **symbol_data) {
+static int process_symbol_table_64(void *data, Elf64_Shdr *symtab, char *string_table, elf_prop_t *prop, t_list **symbol_data) {
     // Calculate the number of symbols
     int num_symbols = symtab->sh_size / symtab->sh_entsize;
 
     // Pointer to the array of symbols
+    if (symtab->sh_offset > prop->file_size || symtab->sh_offset + symtab->sh_size > prop->file_size) {
+        ft_printf("ft_nm: invalid symbol table\n");
+        return -1;
+    }
     Elf64_Sym *symbols = (Elf64_Sym *)((char *)data + symtab->sh_offset);
 
     for (int i = 0; i < num_symbols; i++) {
@@ -61,6 +74,10 @@ static void process_symbol_table_64(void *data, Elf64_Shdr *symtab, char *string
         symbol->bind = ELF64_ST_BIND(sym->st_info);
         symbol->visibility = ELF64_ST_VISIBILITY(sym->st_other);
         symbol->shndx = sym->st_shndx;
+        if (symbol->shndx >= prop->section_entry_nb && symbol->shndx != SHN_ABS && symbol->shndx != SHN_COMMON) {
+            ft_printf("ft_nm: invalid section header index\n");
+            return -1;
+        }
 
         if (symbol->name[0] == '\0' && symbol->shndx != SHN_UNDEF && symbol->shndx != SHN_ABS && symbol->shndx != SHN_COMMON) {
             Elf64_Shdr *curr_section = prop->section_header + symbol->shndx * prop->section_entry_size;
@@ -70,6 +87,7 @@ static void process_symbol_table_64(void *data, Elf64_Shdr *symtab, char *string
 
         ft_lstadd_back(symbol_data, ft_lstnew(symbol));
     }
+    return 0;
 }
 
 t_list *extract_symbol_data_32(void *data, elf_prop_t *prop) {
@@ -83,7 +101,15 @@ t_list *extract_symbol_data_32(void *data, elf_prop_t *prop) {
     
     // Locate the section header string table
     Elf32_Shdr *shstr_section = &shdr_start[prop->string_table_index];
+    if (shstr_section->sh_offset > prop->file_size || shstr_section->sh_offset + shstr_section->sh_size > prop->file_size) {
+        ft_printf("ft_nm: invalid section header string table\n");
+        return NULL;
+    }
     char *shstrtab = (char *) data + shstr_section->sh_offset;
+    if (*(shstrtab + shstr_section->sh_size - 1) != '\0') {
+        ft_printf("ft_nm: invalid section header string table\n");
+        return NULL;
+    }
     prop->shstrtab = shstrtab;
 
     // Iterate over the section headers to locate the string table and symbol tables
@@ -103,8 +129,14 @@ t_list *extract_symbol_data_32(void *data, elf_prop_t *prop) {
             symbol_table = curr_section;
     }
 
-    if (symbol_table)
-        process_symbol_table_32(data, symbol_table, (char *) data + string_table->sh_offset, prop, &symbol_data);
+    if (!symbol_table) {
+        ft_printf("No symbol table found\n");
+        return NULL;
+    }
+
+    int res = process_symbol_table_32(data, symbol_table, (char *) data + string_table->sh_offset, prop, &symbol_data);
+    if (res == -1)
+        return NULL;
 
     return symbol_data;
 
@@ -121,7 +153,15 @@ t_list *extract_symbol_data_64(void *data, elf_prop_t *prop) {
     
     // Locate the section header string table
     Elf64_Shdr *shstr_section = &shdr_start[prop->string_table_index];
+    if (shstr_section->sh_offset > prop->file_size || shstr_section->sh_offset + shstr_section->sh_size > prop->file_size) {
+        ft_printf("ft_nm: invalid section header string table\n");
+        return NULL;
+    }
     char *shstrtab = (char *) data + shstr_section->sh_offset;
+    if (*(shstrtab + shstr_section->sh_size - 1) != '\0') {
+        ft_printf("ft_nm: invalid section header string table\n");
+        return NULL;
+    }
     prop->shstrtab = shstrtab;
 
     // Iterate over the section headers to locate the string table and symbol tables
@@ -141,8 +181,14 @@ t_list *extract_symbol_data_64(void *data, elf_prop_t *prop) {
             symbol_table = curr_section;
     }
 
-    if (symbol_table)
-        process_symbol_table_64(data, symbol_table, (char *) data + string_table->sh_offset, prop, &symbol_data);
+    if (!symbol_table) {
+        ft_printf("No symbol table found\n");
+        return NULL;
+    }
+
+    int res = process_symbol_table_64(data, symbol_table, (char *) data + string_table->sh_offset, prop, &symbol_data);
+    if (res == -1)
+        return NULL;
 
     return symbol_data;
 }
