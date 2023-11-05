@@ -16,8 +16,8 @@ Here, I implemented the core functionalities of this tool for educational purpos
 ### Achievements
 - Successfully rebuilt the core features of the `nm` command including sorting and filtering options for the output
 - Gained a thorough understanding of ELF file format, learning to navigate and interpret the structure of executables, object files and libraries
-- Implemented error handling for edge cases (i.e., invalid ELF headers, out-of-range offsets, etc.)
 - Deepened knowledge of the compilation and linking processes
+- Implemented error handling for edge cases (i.e., invalid ELF headers, out-of-range offsets, etc.)
 
 ## Getting started 🦾
 ### Prerequisites
