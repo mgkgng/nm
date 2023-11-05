@@ -14,14 +14,14 @@ Here, I implemented the core functionalities of this tool for educational purpos
 - Reimplement the nm command for ELF binaries with support for x86_32, x64, object files and dynamic libraries, including sorting and filtering options (-a, -r, -p, -g, -u)
 
 ### Achievements
-- Successfully rebuild the core features of the `nm` command including sorting and filtering options for the output
+- Successfully rebuilt the core features of the `nm` command including sorting and filtering options for the output
 - Gained a thorough understanding of ELF file format, learning to navigate and interpret the structure of executables, object files and libraries
 - Implemented error handling for edge cases (i.e., invalid ELF headers, out-of-range offsets, etc.)
 - Deepened knowledge of the compilation and linking processes
 
 ## Getting started 🦾
 ### Prerequisites
-- Operating System: Linux due to its reliance on the `elf.h` header for ELF format parsing
+- Operating System: Linux, due to its reliance on the `elf.h` header for ELF format parsing
 
 ### Build & Run
 1. Compile:
