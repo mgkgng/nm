@@ -34,3 +34,4 @@ make
 ```
 - Replace `[options]` with any combinations of the supported options : `-a`, `-r`, `-p`, `-g`, `-u` (e.g., `-aru`).
 - Provide one or more paths in `[file(s)]` to specify target files.
+- Feel free to try sample files located in the tests/ directory!
