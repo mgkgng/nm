@@ -70,6 +70,14 @@ static unsigned char get_symbol_type_char_32(symbol_t *sym, elf_prop_t *prop) {
     else if (sym->shndx == SHN_COMMON)
         return 'C';
 
+    if (sym->bind == STB_WEAK) {
+        if (sym->type == STT_OBJECT)
+            return (sym->shndx == SHN_UNDEF) ? 'v' : 'V';
+        return (sym->shndx == SHN_UNDEF) ? 'w' : 'W';
+    } else if (sym->bind == STB_GNU_UNIQUE) {
+        return 'u';
+    }
+
     if (curr_section->sh_type == SHT_PROGBITS && curr_section->sh_flags & SHF_ALLOC) {
         if (curr_section->sh_flags & SHF_EXECINSTR)
             return (sym->bind == STB_LOCAL) ? 't' : 'T';
@@ -86,26 +94,23 @@ static unsigned char get_symbol_type_char_32(symbol_t *sym, elf_prop_t *prop) {
         return (sym->bind == STB_LOCAL) ? 'd' : 'D';
     }
 
-    if (sym->bind == STB_WEAK) {
-        if (sym->type == STT_OBJECT)
-            return (sym->shndx == SHN_UNDEF) ? 'v' : 'V';
-        return (sym->shndx == SHN_UNDEF) ? 'w' : 'W';
-    } else if (sym->bind == STB_GNU_UNIQUE) {
-        return 'u';
-    }
-
     if (sym->type == STT_GNU_IFUNC)
         return 'i';
 
     if (sym->shndx == SHN_UNDEF)
         return 'U';
     
-    if (ft_strcmp(section_name, ".data") == 0)
+    if ((curr_section->sh_flags & SHF_WRITE) && 
+        (curr_section->sh_type == SHT_NOTE ||
+        curr_section->sh_type == SHT_FINI_ARRAY ||
+        curr_section->sh_type == SHT_INIT_ARRAY ||
+        curr_section->sh_type == SHT_DYNAMIC))
         return (sym->bind == STB_LOCAL) ? 'd' : 'D';
-    if (ft_strcmp(section_name, ".rodata"))
-        return (sym->bind == STB_LOCAL) ? 'r' : 'R';
-    
-    return '?';
+    else if (curr_section->sh_type == SHT_INIT_ARRAY ||
+        curr_section->sh_type == SHT_FINI_ARRAY ||
+        curr_section->sh_type == SHT_PREINIT_ARRAY)
+        return (sym->bind == STB_LOCAL) ? 'b' : 'B';
+    return (sym->bind == STB_LOCAL) ? 'r' : 'R';
 }
 
 static unsigned char get_symbol_type_char_64(symbol_t *sym, elf_prop_t *prop) {
@@ -130,6 +135,14 @@ static unsigned char get_symbol_type_char_64(symbol_t *sym, elf_prop_t *prop) {
     else if (sym->shndx == SHN_COMMON)
         return 'C';
 
+    if (sym->bind == STB_WEAK) {
+        if (sym->type == STT_OBJECT)
+            return (sym->shndx == SHN_UNDEF) ? 'v' : 'V';
+        return (sym->shndx == SHN_UNDEF) ? 'w' : 'W';
+    } else if (sym->bind == STB_GNU_UNIQUE) {
+        return 'u';
+    }
+
     if (curr_section->sh_type == SHT_PROGBITS && curr_section->sh_flags & SHF_ALLOC) {
         if (curr_section->sh_flags & SHF_EXECINSTR)
             return (sym->bind == STB_LOCAL) ? 't' : 'T';
@@ -146,26 +159,23 @@ static unsigned char get_symbol_type_char_64(symbol_t *sym, elf_prop_t *prop) {
         return (sym->bind == STB_LOCAL) ? 'd' : 'D';
     }
 
-    if (sym->bind == STB_WEAK) {
-        if (sym->type == STT_OBJECT)
-            return (sym->shndx == SHN_UNDEF) ? 'v' : 'V';
-        return (sym->shndx == SHN_UNDEF) ? 'w' : 'W';
-    } else if (sym->bind == STB_GNU_UNIQUE) {
-        return 'u';
-    }
-
     if (sym->type == STT_GNU_IFUNC)
         return 'i';
 
     if (sym->shndx == SHN_UNDEF)
         return 'U';
     
-    if (ft_strcmp(section_name, ".data") == 0)
+    if ((curr_section->sh_flags & SHF_WRITE) && 
+        (curr_section->sh_type == SHT_NOTE ||
+        curr_section->sh_type == SHT_FINI_ARRAY ||
+        curr_section->sh_type == SHT_INIT_ARRAY ||
+        curr_section->sh_type == SHT_DYNAMIC))
         return (sym->bind == STB_LOCAL) ? 'd' : 'D';
-    if (ft_strcmp(section_name, ".rodata"))
-        return (sym->bind == STB_LOCAL) ? 'r' : 'R';
-    
-    return '?';
+    else if (curr_section->sh_type == SHT_INIT_ARRAY ||
+        curr_section->sh_type == SHT_FINI_ARRAY ||
+        curr_section->sh_type == SHT_PREINIT_ARRAY)
+        return (sym->bind == STB_LOCAL) ? 'b' : 'B';
+    return (sym->bind == STB_LOCAL) ? 'r' : 'R';
 }
 
 void display_symbol_data(t_list *symbol_data, elf_prop_t *prop) {
